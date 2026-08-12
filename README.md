@@ -42,6 +42,72 @@ if _G.NoobZinxCarregado then
 end
 _G.NoobZinxCarregado = true
 
+-- ═══════════════════════════════════════════════════════
+-- 🔐 SISTEMA DE VALIDAÇÃO OFFLINE DE KEYS
+-- ═══════════════════════════════════════════════════════
+local CHAVE_SECRETA = "NoobZinxSecretKey2024"
+
+-- Função para codificar/decodificar usando XOR
+local function codificarXOR(texto, chave)
+    local resultado = {}
+    for i = 1, #texto do
+        local byte = string.byte(texto, i)
+        local chaveByte = string.byte(chave, ((i - 1) % #chave) + 1)
+        table.insert(resultado, string.char(bit32.bxor(byte, chaveByte)))
+    end
+    return table.concat(resultado)
+end
+
+-- Função para codificar em Base64
+local function codificarBase64(dados)
+    local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    return ((dados:gsub('.', function(x) 
+        local r,b='',x:byte()
+        for i=8,1,-1 do r=r..(b%2^i-b%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end)..'0000'):gsub('%d%d%d?%d?%d?%d?', function(x)
+        if (#x < 6) then return '' end
+        local c=0
+        for i=1,6 do c=c+(x:sub(i,i)=='1' and 2^(6-i) or 0) end
+        return b:sub(c+1,c+1)
+    end)..({ '', '==', '=' })[#dados%3+1])
+end
+
+-- Função para decodificar Base64
+local function decodificarBase64(dados)
+    local b = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    dados = string.gsub(dados, '[^'..b..'=]', '')
+    return (dados:gsub('.', function(x)
+        if (x == '=') then return '' end
+        local r,f='',(b:find(x)-1)
+        for i=6,1,-1 do r=r..(f%2^i-f%2^(i-1)>0 and '1' or '0') end
+        return r;
+    end):gsub('%d%d%d?%d?%d?%d?%d?%d?', function(x)
+        if (#x ~= 8) then return '' end
+        local c=0
+        for i=1,8 do c=c+(x:sub(i,i)=='1' and 2^(8-i) or 0) end
+        return string.char(c)
+    end))
+end
+
+-- Função para validar uma Key (funciona em qualquer dispositivo)
+local function validarKeyOffline(key)
+    if not key or key == "" then return false, nil end
+    
+    local dadosDecodificados = nil
+    local ok, resultado = pcall(function()
+        local dadosXOR = decodificarBase64(key)
+        dadosDecodificados = codificarXOR(dadosXOR, CHAVE_SECRETA)
+        return HttpService:JSONDecode(dadosDecodificados)
+    end)
+    
+    if not ok or not resultado then
+        return false, nil
+    end
+    
+    return true, resultado
+end
+
 -- ⬅️ FUNÇÕES DE ARQUIVO (COM TRATAMENTO DE ERRO)
 local function salvarLicenca(licenca)
     if not licenca then return false end
@@ -82,12 +148,13 @@ end
 
 -- ⬅️ FUNÇÃO PARA ATIVAR KEY
 local function ativarKey(key, keyData)
-    if not keyData or keyData.usada then return false end
-    keyData.usada = true
+    if not keyData then return false end
+    
     local dataExpiracao = nil
     if keyData.tipo ~= "VIP Permanente" then
-        dataExpiracao = os.time() + keyData.tempoRestante
+        dataExpiracao = os.time() + keyData.duracao
     end
+    
     local licenca = {
         userId = USER_ID,
         key = key,
@@ -146,23 +213,49 @@ local function verificarKey()
         if MensagemErro then MensagemErro.Text = "❌ Digite uma Key!"; MensagemErro.TextColor3 = Color3.fromRGB(255,255,0) end
         return
     end
-    local keyData = _G.KeysDatabase[key]
-    if not keyData then
-        if MensagemErro then MensagemErro.Text = "❌ KEY INVÁLIDA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
-        InputKey.Text = ""
-        return
+    
+    -- Primeiro tenta validar como Key offline (funciona entre dispositivos)
+    local keyValida, keyData = validarKeyOffline(key)
+    
+    if not keyValida then
+        -- Se não for uma Key offline válida, tenta verificar no banco local
+        keyData = _G.KeysDatabase[key]
+        if not keyData then
+            if MensagemErro then MensagemErro.Text = "❌ KEY INVÁLIDA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
+            InputKey.Text = ""
+            return
+        end
     end
-    if keyData.usada then
+    
+    -- Verifica se a Key já foi utilizada
+    local keyJaUtilizada = false
+    if _G.KeysUtilizadas and _G.KeysUtilizadas[key] then
+        keyJaUtilizada = true
+    end
+    
+    if keyJaUtilizada then
         if MensagemErro then MensagemErro.Text = "❌ KEY JÁ UTILIZADA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
         InputKey.Text = ""
         return
     end
-    if keyData.tipo ~= "VIP Permanente" and keyData.tempoRestante <= 0 then
+    
+    -- Verifica se a Key expirou
+    if keyData.dataExpiracao and keyData.dataExpiracao < os.time() then
         if MensagemErro then MensagemErro.Text = "⏰ KEY EXPIRADA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,165,0) end
         InputKey.Text = ""
         return
     end
+    
     if ativarKey(key, keyData) then
+        -- Marca a Key como utilizada
+        if not _G.KeysUtilizadas then
+            _G.KeysUtilizadas = {}
+        end
+        _G.KeysUtilizadas[key] = {
+            userId = USER_ID,
+            dataUso = os.time()
+        }
+        
         if MensagemErro then MensagemErro.Text = "✅ KEY VÁLIDA! Carregando..."; MensagemErro.TextColor3 = Color3.fromRGB(0,255,0) end
         task.wait(0.5)
         if TelaKey then TelaKey:Destroy(); TelaKey = nil end
