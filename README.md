@@ -32,6 +32,9 @@ end
 if not _G.Licencas then
     _G.Licencas = {}
 end
+if not _G.KeysUtilizadas then
+    _G.KeysUtilizadas = {}
+end
 
 -- ═══════════════════════════════════════════════════════
 -- 🛡️ PROTEÇÃO ANTI-DUPLICAÇÃO
@@ -45,7 +48,6 @@ _G.NoobZinxCarregado = true
 -- ═══════════════════════════════════════════════════════
 -- 🔐 SISTEMA DE VALIDAÇÃO DE KEYS (ALGORITMO COMPARTILHADO)
 -- ═══════════════════════════════════════════════════════
--- Este algoritmo funciona em qualquer dispositivo sem precisar de servidor
 local function calcularHash(key)
     local hash = 0
     for i = 1, #key do
@@ -54,9 +56,7 @@ local function calcularHash(key)
     return hash
 end
 
--- Função para extrair informações da Key
 local function extrairInfoKey(key)
-    -- Formato: NOOBZINX-TIPO-CODIGO
     local partes = {}
     for parte in string.gmatch(key, "[^-]+") do
         table.insert(partes, parte)
@@ -68,11 +68,9 @@ local function extrairInfoKey(key)
     local tipo = partes[2]
     local codigo = partes[3]
     
-    -- Valida o código (8 caracteres, apenas maiúsculas e números)
     if #codigo ~= 8 then return nil end
     if not string.match(codigo, "^[A-Z0-9]+$") then return nil end
     
-    -- Determina o tipo
     local tipoKey = nil
     local duracao = nil
     
@@ -88,17 +86,12 @@ local function extrairInfoKey(key)
         duracao = dias * 86400
     end
     
-    -- Valida o código usando hash
     local hashEsperado = calcularHash("NOOBZINX-" .. tipo .. "-" .. codigo)
-    
-    -- O hash deve terminar com um padrão específico baseado no tipo
     local digitoVerificador = hashEsperado % 10
     
-    -- Para VIP, o último dígito do hash deve ser 0, 2, 4, 6 ou 8 (par)
     if tipo == "VIP" then
         if digitoVerificador % 2 ~= 0 then return nil end
     else
-        -- Para temporárias, o último dígito deve ser ímpar
         if digitoVerificador % 2 == 0 then return nil end
     end
     
@@ -110,14 +103,12 @@ local function extrairInfoKey(key)
     }
 end
 
--- Função para validar Key (funciona em qualquer dispositivo)
 local function validarKeySistema(key)
     if not key or key == "" then return false, nil end
     
     local infoKey = extrairInfoKey(key)
     if not infoKey then return false, nil end
     
-    -- Verifica se a Key já foi utilizada
     if _G.KeysUtilizadas and _G.KeysUtilizadas[key] then
         return false, "utilizada"
     end
@@ -144,7 +135,6 @@ local function carregarLicenca()
     return licenca
 end
 
--- ⬅️ FUNÇÃO PARA VERIFICAR LICENÇA (NÃO TRAVA O SCRIPT)
 local function verificarLicenca()
     local licenca = _G.Licencas[USER_ID]
     if not licenca then
@@ -163,7 +153,6 @@ local function verificarLicenca()
     return false, nil
 end
 
--- ⬅️ FUNÇÃO PARA ATIVAR KEY
 local function ativarKey(key, keyData)
     if not keyData then return false end
     
@@ -189,6 +178,7 @@ end
 -- 🚀 VARIÁVEIS GLOBAIS
 -- ═══════════════════════════════════════════════════════
 local ativarHitbox, desativarHitbox, ativarFPSBooster, desativarFPSBooster, puxarPlayers, lblFPS
+local ativarESPCompleto, desativarESPCompleto
 local menuCriado = false
 local SG, MF, T
 local TelaKey = nil
@@ -231,27 +221,19 @@ local function verificarKey()
         return
     end
     
-    -- Valida a Key usando o algoritmo compartilhado
     local keyValida, keyData = validarKeySistema(key)
     
     if not keyValida then
-        if MensagemErro then MensagemErro.Text = "❌ KEY INVÁLIDA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
-        InputKey.Text = ""
-        return
-    end
-    
-    -- Verifica se a Key já foi utilizada
-    if keyData == "utilizada" then
-        if MensagemErro then MensagemErro.Text = "❌ KEY JÁ UTILIZADA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
+        if keyData == "utilizada" then
+            if MensagemErro then MensagemErro.Text = "❌ KEY JÁ UTILIZADA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
+        else
+            if MensagemErro then MensagemErro.Text = "❌ KEY INVÁLIDA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
+        end
         InputKey.Text = ""
         return
     end
     
     if ativarKey(key, keyData) then
-        -- Marca a Key como utilizada
-        if not _G.KeysUtilizadas then
-            _G.KeysUtilizadas = {}
-        end
         _G.KeysUtilizadas[key] = {
             userId = USER_ID,
             dataUso = os.time()
@@ -273,7 +255,6 @@ end
 local function criarTelaKey()
     if TelaKey then return end
     
-    -- Verifica se já existe uma tela de key antiga
     if LocalPlayer.PlayerGui:FindFirstChild("TelaKeyNoobZinx") then
         LocalPlayer.PlayerGui:FindFirstChild("TelaKeyNoobZinx"):Destroy()
     end
@@ -376,7 +357,6 @@ end
 -- ═══════════════════════════════════════════════════════
 print("🚀 Inicializando @NoobZinx...")
 
--- ⬅️ Verifica se já existe um painel do NoobZinx na tela
 local painelExistente = nil
 for _, obj in pairs(LocalPlayer.PlayerGui:GetChildren()) do
     if obj:IsA("ScreenGui") and obj.Name == "NoobZinxPainel" then
@@ -385,13 +365,11 @@ for _, obj in pairs(LocalPlayer.PlayerGui:GetChildren()) do
     end
 end
 
--- Se já existe um painel, não cria outro
 if painelExistente then
     print("✅ Painel @NoobZinx já existe! Não criando outro.")
     return
 end
 
--- ⬅️ Tenta verificar licença (não trava se falhar)
 local temLicenca = false
 local ok, err = pcall(function()
     temLicenca = verificarLicenca()
@@ -401,12 +379,10 @@ if not ok then
     temLicenca = false
 end
 
--- ⬅️ Decide o que fazer
 if temLicenca then
     print("✅ Licença ativa para usuário " .. USER_ID)
-    -- Aguarda as outras partes carregarem antes de iniciar o menu
     task.spawn(function()
-        task.wait(1) -- Aguarda 1 segundo para garantir que todas as partes foram carregadas
+        task.wait(1)
         IniciarMenu()
     end)
 else
@@ -414,7 +390,6 @@ else
     criarTelaKey()
 end
 
--- ⬅️ LOOP DE ATUALIZAÇÃO (NÃO TRAVA O SCRIPT)
 coroutine.wrap(function()
     while true do
         task.wait(1)
@@ -426,6 +401,31 @@ coroutine.wrap(function()
                 _G.Licencas[USER_ID] = nil
                 pcall(function() writefile(ARQUIVO_LICENCA, "") end)
                 print("⏰ Licença expirada!")
+                
+                -- Desliga todas as funções antes de destruir o painel
+                pcall(function()
+                    if desativarHitbox then desativarHitbox() end
+                    if desativarFPSBooster then desativarFPSBooster() end
+                    if desativarESPCompleto then desativarESPCompleto() end
+                end)
+                
+                -- Reseta todas as configurações
+                Config.Aimbot = false
+                Config.MostrarFOV = false
+                Config.ESP = false
+                Config.ESP_Caixa = false
+                Config.ESP_Nome = false
+                Config.ESP_Vida = false
+                Config.ESP_Linha = false
+                Config.ESP_Distancia = false
+                Config.Speed = false
+                Config.Rainbow = false
+                Config.SuperJump = false
+                Config.AtravessarParede = false
+                Config.HitboxAmpliada = false
+                Config.FPSBooster = false
+                Config.KillAll = false
+                
                 if SG then pcall(function() SG:Destroy() end); SG = nil end
                 menuCriado = false
                 _G.NoobZinxCarregado = false
@@ -441,7 +441,6 @@ function IniciarMenu()
         return 
     end
     
-    -- Verifica se já existe um ScreenGui do NoobZinx
     if LocalPlayer.PlayerGui:FindFirstChild("NoobZinxPainel") then
         print("⚠️ Painel já existe! Ignorando criação...")
         return
@@ -722,7 +721,11 @@ EspConteudo.Visible = false
 
 criarBotaoSwitch(EspConteudo, 10, "Ativar ESP", function() return Config.ESP end, function(v) 
     Config.ESP = v
-    if v then ativarESPCompleto() else desativarESPCompleto() end
+    if v then 
+        if ativarESPCompleto then ativarESPCompleto() end
+    else 
+        if desativarESPCompleto then desativarESPCompleto() end
+    end
 end)
 sep(EspConteudo,48)
 criarBotaoSwitch(EspConteudo, 58, "ESP Caixa", function() return Config.ESP_Caixa end, function(v) Config.ESP_Caixa = v end)
@@ -786,12 +789,20 @@ criarBotaoSwitch(ConfConteudo, 190, "Cores Arco-Íris", function() return Config
 sep(ConfConteudo,222)
 criarBotaoSwitch(ConfConteudo, 232, "🎯 Hitbox Ampliada", function() return Config.HitboxAmpliada end, function(v) 
     Config.HitboxAmpliada = v 
-    if v then ativarHitbox() else desativarHitbox() end
+    if v then 
+        if ativarHitbox then ativarHitbox() end
+    else 
+        if desativarHitbox then desativarHitbox() end
+    end
 end)
 sep(ConfConteudo,266)
 criarBotaoSwitch(ConfConteudo, 276, "🚀 FPS BOOSTER", function() return Config.FPSBooster end, function(v) 
     Config.FPSBooster = v 
-    if v then ativarFPSBooster() else desativarFPSBooster() end
+    if v then 
+        if ativarFPSBooster then ativarFPSBooster() end
+    else 
+        if desativarFPSBooster then desativarFPSBooster() end
+    end
 end)
 sep(ConfConteudo,310)
 criarBotaoSwitch(ConfConteudo, 320, "💀 Puxar Players", function() return Config.KillAll end, function(v) Config.KillAll = v end)
@@ -888,7 +899,7 @@ bAim.MouseButton1Click:Connect(function() mudarAba(bAim,AimConteudo) end)
 bEsp.MouseButton1Click:Connect(function() mudarAba(bEsp,EspConteudo) end)
 bConf.MouseButton1Click:Connect(function() mudarAba(bConf,ConfConteudo) end)
 bInfo.MouseButton1Click:Connect(function() mudarAba(bInfo,InfoConteudo) end)
--- @NoobZinx - PARTE 4/4 (FUNÇÕES + ESP)
+-- @NoobZinx - PARTE 4/4 (FUNÇÕES + ESP + LOOPS)
 local hitboxConnection = nil
 local tamanhoOriginal = {}
 
@@ -989,7 +1000,7 @@ function puxarPlayers()
 end
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 ESP
+-- 🔥 ESP (INICIALIZAÇÃO CORRIGIDA)
 -- ═══════════════════════════════════════════════════════
 local desenhosESP = {}
 local tempoCor = 0
@@ -1153,7 +1164,7 @@ function ativarESPCompleto()
 end
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 CONTADOR DE FPS
+-- 🔥 CONTADOR DE FPS (INICIALIZAÇÃO CORRIGIDA)
 -- ═══════════════════════════════════════════════════════
 local contFPS = 0
 local ultimoFPS = os.clock()
@@ -1183,11 +1194,14 @@ RunService.Heartbeat:Connect(function(delta)
 end)
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 AIMBOT
+-- 🔥 AIMBOT (INICIALIZAÇÃO CORRIGIDA)
 -- ═══════════════════════════════════════════════════════
 local circuloFOV = Drawing.new("Circle")
 circuloFOV.Thickness = 4
 circuloFOV.Color = Color3.fromRGB(255, 20, 147)
+circuloFOV.Visible = false
+circuloFOV.Radius = Config.FOV
+circuloFOV.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
 function jogadorValido(p)
     if not p or p == LocalPlayer then return false end
@@ -1230,9 +1244,11 @@ function pegarAlvo()
 end
 
 RunService.RenderStepped:Connect(function()
-    circuloFOV.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    circuloFOV.Radius = Config.FOV
-    circuloFOV.Visible = Config.MostrarFOV
+    if circuloFOV then
+        circuloFOV.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+        circuloFOV.Radius = Config.FOV
+        circuloFOV.Visible = Config.MostrarFOV
+    end
     if not Config.Aimbot then return end
     local alvo = pegarAlvo()
     if alvo then
