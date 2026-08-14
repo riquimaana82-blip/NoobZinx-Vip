@@ -175,6 +175,16 @@ local function ativarKey(key, keyData)
 end
 
 -- ═══════════════════════════════════════════════════════
+-- 🌈 EFEITO RAINBOW (MAIS LENTO - 2X MAIS SUAVE)
+-- ═══════════════════════════════════════════════════════
+local tempoRainbow = 0
+
+local function atualizarCorRainbow()
+    tempoRainbow = tempoRainbow + 0.005
+    return Color3.fromHSV(tempoRainbow % 1, 1, 1)
+end
+
+-- ═══════════════════════════════════════════════════════
 -- 🚀 VARIÁVEIS GLOBAIS
 -- ═══════════════════════════════════════════════════════
 local ativarHitbox, desativarHitbox, ativarFPSBooster, desativarFPSBooster, puxarPlayers, lblFPS
@@ -250,7 +260,7 @@ local function verificarKey()
 end
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 FUNÇÃO PARA CRIAR TELA DE KEY
+-- 🔥 FUNÇÃO PARA CRIAR TELA DE KEY (COM RAINBOW MAIS LENTO)
 -- ═══════════════════════════════════════════════════════
 local function criarTelaKey()
     if TelaKey then return end
@@ -267,7 +277,7 @@ local function criarTelaKey()
 
     local PainelKey = Instance.new("Frame")
     PainelKey.Parent = TelaKey
-    PainelKey.BackgroundColor3 = Color3.fromRGB(255,20,147)
+    PainelKey.BackgroundColor3 = atualizarCorRainbow()
     PainelKey.Size = UDim2.new(0,350,0,280)
     PainelKey.Position = UDim2.new(0.5,-175,0.5,-140)
     PainelKey.BorderSizePixel = 1
@@ -313,7 +323,7 @@ local function criarTelaKey()
     BotaoVerificar.Size = UDim2.new(0,140,0,40)
     BotaoVerificar.Position = UDim2.new(0.5,-70,0,170)
     BotaoVerificar.Text = "VERIFICAR"
-    BotaoVerificar.TextColor3 = Color3.fromRGB(255,20,147)
+    BotaoVerificar.TextColor3 = Color3.fromRGB(30,30,30)
     BotaoVerificar.TextScaled = true
     BotaoVerificar.Font = Enum.Font.GothamBold
     Instance.new("UICorner",BotaoVerificar).CornerRadius = UDim.new(0,8)
@@ -325,7 +335,7 @@ local function criarTelaKey()
     MensagemErro.Size = UDim2.new(1,0,0,25)
     MensagemErro.Position = UDim2.new(0,0,0,220)
     MensagemErro.Text = ""
-    MensagemErro.TextColor3 = Color3.fromRGB(255,0,0)
+    MensagemErro.TextColor3 = Color3.fromRGB(255,255,0)
     MensagemErro.TextScaled = true
     MensagemErro.Font = Enum.Font.GothamBold
 
@@ -350,6 +360,14 @@ local function criarTelaKey()
     InputKey.FocusLost:Connect(function(enter)
         if enter then verificarKey() end
     end)
+    
+    -- Loop para atualizar a cor rainbow da tela de key (mais lento)
+    coroutine.wrap(function()
+        while TelaKey and PainelKey and PainelKey.Parent do
+            task.wait(0.1)
+            PainelKey.BackgroundColor3 = atualizarCorRainbow()
+        end
+    end)()
 end
 
 -- ═══════════════════════════════════════════════════════
@@ -402,14 +420,12 @@ coroutine.wrap(function()
                 pcall(function() writefile(ARQUIVO_LICENCA, "") end)
                 print("⏰ Licença expirada!")
                 
-                -- Desliga todas as funções antes de destruir o painel
                 pcall(function()
                     if desativarHitbox then desativarHitbox() end
                     if desativarFPSBooster then desativarFPSBooster() end
                     if desativarESPCompleto then desativarESPCompleto() end
                 end)
                 
-                -- Reseta todas as configurações
                 Config.Aimbot = false
                 Config.MostrarFOV = false
                 Config.ESP = false
@@ -434,7 +450,7 @@ coroutine.wrap(function()
         end
     end
 end)()
--- @NoobZinx - PARTE 2/4 (PAINEL + AIMBOT)
+-- @NoobZinx - PARTE 2/4 (PAINEL + AIMBOT COM RAINBOW MAIS LENTO)
 function IniciarMenu()
     if menuCriado then 
         print("⚠️ Menu já criado! Ignorando...")
@@ -456,7 +472,7 @@ SG.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local OB = Instance.new("TextButton")
 OB.Parent = SG
-OB.BackgroundColor3 = Color3.fromRGB(255,20,147)
+OB.BackgroundColor3 = atualizarCorRainbow()
 OB.Size = UDim2.new(0,45,0,45)
 OB.Position = UDim2.new(0,10,0,10)
 OB.Text = "MENU"
@@ -474,12 +490,12 @@ MF.Position = UDim2.new(0.5,-170,0.5,-210)
 MF.Active = true
 MF.Draggable = true
 MF.BorderSizePixel = 1
-MF.BorderColor3 = Color3.fromRGB(255,20,147)
+MF.BorderColor3 = atualizarCorRainbow()
 Instance.new("UICorner",MF).CornerRadius = UDim.new(0,10)
 
 local TB = Instance.new("Frame")
 TB.Parent = MF
-TB.BackgroundColor3 = Color3.fromRGB(255,20,147)
+TB.BackgroundColor3 = atualizarCorRainbow()
 TB.Size = UDim2.new(1,0,0,36)
 Instance.new("UICorner",TB).CornerRadius = UDim.new(0,10)
 
@@ -521,7 +537,7 @@ Conteudo.Position = UDim2.new(0,55,0,36)
 local sep = function(pai, y)
     local s = Instance.new("Frame")
     s.Parent = pai
-    s.BackgroundColor3 = Color3.fromRGB(255,20,147)
+    s.BackgroundColor3 = atualizarCorRainbow()
     s.Size = UDim2.new(0.92,0,0,1)
     s.Position = UDim2.new(0.04,0,0,y)
 end
@@ -529,7 +545,7 @@ end
 local function abaLateral(icone, indice)
     local btn = Instance.new("TextButton")
     btn.Parent = Lateral
-    btn.BackgroundColor3 = indice == 1 and Color3.fromRGB(255,20,147) or Color3.fromRGB(35,35,35)
+    btn.BackgroundColor3 = indice == 1 and atualizarCorRainbow() or Color3.fromRGB(35,35,35)
     btn.Size = UDim2.new(1,0,0,55)
     btn.Position = UDim2.new(0,0,0,(indice-1)*55)
     btn.Text = icone
@@ -578,7 +594,7 @@ local function criarBotaoSwitch(pai, posY, texto, valorAtual, funcaoMudar)
     clique.MouseButton1Click:Connect(function()
         local novoValor = not valorAtual()
         funcaoMudar(novoValor)
-        fundo.BackgroundColor3 = novoValor and Color3.fromRGB(255,20,147) or Color3.fromRGB(60,60,60)
+        fundo.BackgroundColor3 = novoValor and atualizarCorRainbow() or Color3.fromRGB(60,60,60)
         botao.Position = novoValor and UDim2.new(1,-21,0.5,-9) or UDim2.new(0,3,0.5,-9)
     end)
 end
@@ -666,7 +682,7 @@ end)
 
 local bFovMais = Instance.new("TextButton")
 bFovMais.Parent = AimConteudo
-bFovMais.BackgroundColor3 = Color3.fromRGB(255,20,147)
+bFovMais.BackgroundColor3 = atualizarCorRainbow()
 bFovMais.Size = UDim2.new(0.12,0,0,24)
 bFovMais.Position = UDim2.new(0.70,0,0,195)
 bFovMais.Text = "+"
@@ -702,7 +718,7 @@ end)
 
 local bSmMais = Instance.new("TextButton")
 bSmMais.Parent = AimConteudo
-bSmMais.BackgroundColor3 = Color3.fromRGB(255,20,147)
+bSmMais.BackgroundColor3 = atualizarCorRainbow()
 bSmMais.Size = UDim2.new(0.12,0,0,24)
 bSmMais.Position = UDim2.new(0.70,0,0,240)
 bSmMais.Text = "+"
@@ -712,6 +728,21 @@ bSmMais.MouseButton1Click:Connect(function()
     Config.Smooth = math.min(Config.Smooth+0.1,1)
     lblSmooth.Text = "Suavidade: "..string.format("%.1f",Config.Smooth)
 end)
+
+-- Loop rainbow do painel (mais lento)
+coroutine.wrap(function()
+    while SG and SG.Parent do
+        task.wait(0.1)
+        pcall(function()
+            local cor = atualizarCorRainbow()
+            TB.BackgroundColor3 = cor
+            MF.BorderColor3 = cor
+            OB.BackgroundColor3 = cor
+            bFovMais.BackgroundColor3 = cor
+            bSmMais.BackgroundColor3 = cor
+        end)
+    end
+end)()
 -- @NoobZinx - PARTE 3/4 (ESP + CONFIG + INFO)
 local EspConteudo = Instance.new("Frame")
 EspConteudo.Parent = Conteudo
@@ -770,7 +801,7 @@ end)
 
 local bVelMais = Instance.new("TextButton")
 bVelMais.Parent = ConfConteudo
-bVelMais.BackgroundColor3 = Color3.fromRGB(255,20,147)
+bVelMais.BackgroundColor3 = atualizarCorRainbow()
 bVelMais.Size = UDim2.new(0.12,0,0,24)
 bVelMais.Position = UDim2.new(0.70,0,0,58)
 bVelMais.Text = "+"
@@ -859,7 +890,7 @@ coroutine.wrap(function()
     end
 end)()
 
-local dados = {{"Script:","NoobZinx"},{"Desenvolvedor:","@NoobZinx"},{"Data:",os.date("%d/%m/%Y")},{"Status:","Operacional"}}
+local dados = {{"Script:","NoobZinx"},{"Desenvolvedor:","@NoobZinx"},{"Data:",os.date("%d/%m/%Y")},{"Status:","Online"}}
 for i,item in ipairs(dados) do
     local y = 160 + ((i-1)*32)
     local tEsq = Instance.new("TextLabel")
@@ -868,7 +899,7 @@ for i,item in ipairs(dados) do
     tEsq.Size = UDim2.new(0.35,0,0,26)
     tEsq.Position = UDim2.new(0.08,0,0,y)
     tEsq.Text = item[1]
-    tEsq.TextColor3 = Color3.fromRGB(255,20,147)
+    tEsq.TextColor3 = atualizarCorRainbow()
     tEsq.TextScaled = true
     tEsq.TextXAlignment = Enum.TextXAlignment.Right
 
@@ -882,24 +913,30 @@ for i,item in ipairs(dados) do
     tDir.TextScaled = true
 end
 
+-- ═══════════════════════════════════════════════════════
+-- 🔥 FUNÇÃO DE TROCA DE ABA (CORRIGIDA)
+-- ═══════════════════════════════════════════════════════
 local function mudarAba(btnAtivo, painelVisivel)
     bAim.BackgroundColor3 = Color3.fromRGB(35,35,35)
     bEsp.BackgroundColor3 = Color3.fromRGB(35,35,35)
     bConf.BackgroundColor3 = Color3.fromRGB(35,35,35)
     bInfo.BackgroundColor3 = Color3.fromRGB(35,35,35)
-    btnAtivo.BackgroundColor3 = Color3.fromRGB(255,20,147)
+    
+    btnAtivo.BackgroundColor3 = atualizarCorRainbow()
+    
     AimConteudo.Visible = false
     EspConteudo.Visible = false
     ConfConteudo.Visible = false
     InfoConteudo.Visible = false
+    
     painelVisivel.Visible = true
 end
 
-bAim.MouseButton1Click:Connect(function() mudarAba(bAim,AimConteudo) end)
-bEsp.MouseButton1Click:Connect(function() mudarAba(bEsp,EspConteudo) end)
-bConf.MouseButton1Click:Connect(function() mudarAba(bConf,ConfConteudo) end)
-bInfo.MouseButton1Click:Connect(function() mudarAba(bInfo,InfoConteudo) end)
--- @NoobZinx - PARTE 4/4 (FUNÇÕES + ESP + LOOPS)
+bAim.MouseButton1Click:Connect(function() mudarAba(bAim, AimConteudo) end)
+bEsp.MouseButton1Click:Connect(function() mudarAba(bEsp, EspConteudo) end)
+bConf.MouseButton1Click:Connect(function() mudarAba(bConf, ConfConteudo) end)
+bInfo.MouseButton1Click:Connect(function() mudarAba(bInfo, InfoConteudo) end)
+-- @NoobZinx - PARTE 4/4 (FUNÇÕES + ESP CORRIGIDO + FOV RAINBOW MAIS LENTO)
 local hitboxConnection = nil
 local tamanhoOriginal = {}
 
@@ -1000,7 +1037,7 @@ function puxarPlayers()
 end
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 ESP (INICIALIZAÇÃO CORRIGIDA)
+-- 🔥 ESP (CORRIGIDO PARA FUNCIONAR EM QUALQUER DISPOSITIVO)
 -- ═══════════════════════════════════════════════════════
 local desenhosESP = {}
 local tempoCor = 0
@@ -1075,13 +1112,19 @@ function ativarESPCompleto()
                         dist = Drawing.new("Text")
                     }
                     desenhosESP[p].box.Thickness = 3
+                    desenhosESP[p].box.Visible = false
                     desenhosESP[p].bgVida.Filled = true
                     desenhosESP[p].bgVida.Color = Color3.fromRGB(30,30,30)
+                    desenhosESP[p].bgVida.Visible = false
                     desenhosESP[p].barraVida.Filled = true
                     desenhosESP[p].barraVida.Color = Color3.fromRGB(0,210,0)
+                    desenhosESP[p].barraVida.Visible = false
                     desenhosESP[p].name.Color = Color3.fromRGB(255,20,147)
+                    desenhosESP[p].name.Visible = false
                     desenhosESP[p].linha.Thickness = 2
+                    desenhosESP[p].linha.Visible = false
                     desenhosESP[p].dist.Color = Color3.fromRGB(255,255,255)
+                    desenhosESP[p].dist.Visible = false
                 end
             end
         end
@@ -1164,7 +1207,7 @@ function ativarESPCompleto()
 end
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 CONTADOR DE FPS (INICIALIZAÇÃO CORRIGIDA)
+-- 🔥 CONTADOR DE FPS
 -- ═══════════════════════════════════════════════════════
 local contFPS = 0
 local ultimoFPS = os.clock()
@@ -1194,15 +1237,21 @@ RunService.Heartbeat:Connect(function(delta)
 end)
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 AIMBOT (INICIALIZAÇÃO CORRIGIDA)
+-- 🔥 FOV RAINBOW (MAIS LENTO E SUAVE)
 -- ═══════════════════════════════════════════════════════
 local circuloFOV = Drawing.new("Circle")
 circuloFOV.Thickness = 4
-circuloFOV.Color = Color3.fromRGB(255, 20, 147)
+circuloFOV.Color = atualizarCorRainbow()
 circuloFOV.Visible = false
 circuloFOV.Radius = Config.FOV
+circuloFOV.Filled = false
 circuloFOV.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
+local tempoFOVRainbow = 0
+
+-- ═══════════════════════════════════════════════════════
+-- 🔥 AIMBOT (FUNCIONANDO NORMALMENTE)
+-- ═══════════════════════════════════════════════════════
 function jogadorValido(p)
     if not p or p == LocalPlayer then return false end
     if not p.Character then return false end
@@ -1248,7 +1297,10 @@ RunService.RenderStepped:Connect(function()
         circuloFOV.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
         circuloFOV.Radius = Config.FOV
         circuloFOV.Visible = Config.MostrarFOV
+        tempoFOVRainbow = tempoFOVRainbow + 0.005
+        circuloFOV.Color = Color3.fromHSV(tempoFOVRainbow % 1, 1, 1)
     end
+    
     if not Config.Aimbot then return end
     local alvo = pegarAlvo()
     if alvo then
