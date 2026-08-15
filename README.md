@@ -1,10 +1,11 @@
--- @NoobZinx - PARTE 1/4 (INTERFACE + LICENÇA ISOLADA)
+-- @NoobZinx - PARTE 1/5 (INTERFACE + LICENÇA ISOLADA)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local UserInput = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local Stats = game:GetService("Stats")
 
 -- ═══════════════════════════════════════════════════════
 -- 🔐 CONFIGURAÇÕES
@@ -15,6 +16,8 @@ local Config = {
     ESP_Linha = false, ESP_Distancia = false, Speed = false,
     Rainbow = false, SuperJump = false, AtravessarParede = false,
     HitboxAmpliada = false, FPSBooster = false, KillAll = false,
+    MostrarPing = false, MostrarPlayers = false, MostrarFPS = false,
+    Fly = false,
     TargetPart = "Head", FOV = 150, Smooth = 0.2,
     SpeedMul = 50, AimType = "Ao Olhar"
 }
@@ -189,11 +192,58 @@ end
 -- ═══════════════════════════════════════════════════════
 local ativarHitbox, desativarHitbox, ativarFPSBooster, desativarFPSBooster, puxarPlayers, lblFPS
 local ativarESPCompleto, desativarESPCompleto
+local ativarFly, desativarFly
 local menuCriado = false
 local SG, MF, T
 local TelaKey = nil
 local InputKey = nil
 local MensagemErro = nil
+
+-- Variáveis para novos recursos
+local notificacoes = {}
+local mostradorPing = nil
+local mostradorPlayers = nil
+local mostradorFPS = nil
+
+-- ═══════════════════════════════════════════════════════
+-- 🔔 FUNÇÃO PARA MOSTRAR NOTIFICAÇÃO
+-- ═══════════════════════════════════════════════════════
+local function mostrarNotificacao(texto)
+    if not SG then return end
+    
+    local notif = Instance.new("Frame")
+    notif.Parent = SG
+    notif.BackgroundColor3 = Color3.fromRGB(20,20,20)
+    notif.BorderColor3 = atualizarCorRainbow()
+    notif.BorderSizePixel = 1
+    notif.Size = UDim2.new(0, 200, 0, 35)
+    notif.Position = UDim2.new(1, -210, 0, 10)
+    notif.ZIndex = 100
+    Instance.new("UICorner",notif).CornerRadius = UDim.new(0,8)
+    
+    local textoNotif = Instance.new("TextLabel")
+    textoNotif.Parent = notif
+    textoNotif.BackgroundTransparency = 1
+    textoNotif.Size = UDim2.new(1,0,1,0)
+    textoNotif.Text = texto
+    textoNotif.TextColor3 = Color3.fromRGB(255,255,255)
+    textoNotif.TextScaled = true
+    textoNotif.Font = Enum.Font.GothamBold
+    textoNotif.ZIndex = 101
+    
+    table.insert(notificacoes, notif)
+    
+    task.spawn(function()
+        task.wait(3)
+        pcall(function() notif:Destroy() end)
+        for i, n in pairs(notificacoes) do
+            if n == notif then
+                table.remove(notificacoes, i)
+                break
+            end
+        end
+    end)
+end
 
 -- ═══════════════════════════════════════════════════════
 -- 🔥 FUNÇÃO PARA ATUALIZAR O TÍTULO
@@ -424,6 +474,7 @@ coroutine.wrap(function()
                     if desativarHitbox then desativarHitbox() end
                     if desativarFPSBooster then desativarFPSBooster() end
                     if desativarESPCompleto then desativarESPCompleto() end
+                    if desativarFly then desativarFly() end
                 end)
                 
                 Config.Aimbot = false
@@ -441,6 +492,10 @@ coroutine.wrap(function()
                 Config.HitboxAmpliada = false
                 Config.FPSBooster = false
                 Config.KillAll = false
+                Config.MostrarPing = false
+                Config.MostrarPlayers = false
+                Config.MostrarFPS = false
+                Config.Fly = false
                 
                 if SG then pcall(function() SG:Destroy() end); SG = nil end
                 menuCriado = false
@@ -450,7 +505,7 @@ coroutine.wrap(function()
         end
     end
 end)()
--- @NoobZinx - PARTE 2/4 (PAINEL + AIMBOT COM RAINBOW MAIS LENTO)
+-- @NoobZinx - PARTE 2/5 (PAINEL + BOTÃO MENU CORRIGIDO)
 function IniciarMenu()
     if menuCriado then 
         print("⚠️ Menu já criado! Ignorando...")
@@ -480,7 +535,47 @@ OB.TextColor3 = Color3.fromRGB(255,255,255)
 OB.Font = Enum.Font.GothamBold
 OB.TextScaled = true
 OB.Visible = false
+OB.ZIndex = 10
 Instance.new("UICorner",OB).CornerRadius = UDim.new(0,10)
+
+-- Sistema de arraste corrigido para o botão MENU
+local arrastandoOB = false
+local inicioArrasteOB = nil
+local posicaoInicialOB = nil
+local moveuOB = false
+
+OB.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        arrastandoOB = true
+        moveuOB = false
+        inicioArrasteOB = input.Position
+        posicaoInicialOB = OB.Position
+    end
+end)
+
+UserInput.InputChanged:Connect(function(input)
+    if arrastandoOB and (input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseMovement) then
+        local delta = input.Position - inicioArrasteOB
+        if math.abs(delta.X) > 5 or math.abs(delta.Y) > 5 then
+            moveuOB = true
+        end
+        OB.Position = UDim2.new(0, posicaoInicialOB.X.Offset + delta.X, 0, posicaoInicialOB.Y.Offset + delta.Y)
+    end
+end)
+
+UserInput.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        arrastandoOB = false
+    end
+end)
+
+-- Clique normal para abrir/fechar o painel
+OB.MouseButton1Click:Connect(function()
+    if not moveuOB then
+        MF.Visible = true
+        OB.Visible = false
+    end
+end)
 
 MF = Instance.new("Frame")
 MF.Parent = SG
@@ -491,12 +586,14 @@ MF.Active = true
 MF.Draggable = true
 MF.BorderSizePixel = 1
 MF.BorderColor3 = atualizarCorRainbow()
+MF.ZIndex = 5
 Instance.new("UICorner",MF).CornerRadius = UDim.new(0,10)
 
 local TB = Instance.new("Frame")
 TB.Parent = MF
 TB.BackgroundColor3 = atualizarCorRainbow()
 TB.Size = UDim2.new(1,0,0,36)
+TB.ZIndex = 6
 Instance.new("UICorner",TB).CornerRadius = UDim.new(0,10)
 
 T = Instance.new("TextLabel")
@@ -508,6 +605,7 @@ atualizarTitulo()
 T.TextColor3 = Color3.fromRGB(255,255,255)
 T.TextScaled = true
 T.Font = Enum.Font.GothamBold
+T.ZIndex = 7
 
 local X = Instance.new("TextButton")
 X.Parent = TB
@@ -518,21 +616,23 @@ X.Text = "X"
 X.TextColor3 = Color3.fromRGB(255,255,255)
 X.TextScaled = true
 X.Font = Enum.Font.GothamBold
+X.ZIndex = 7
 Instance.new("UICorner",X).CornerRadius = UDim.new(0,10)
 X.MouseButton1Click:Connect(function() MF.Visible=false; OB.Visible=true end)
-OB.MouseButton1Click:Connect(function() MF.Visible=true; OB.Visible=false end)
 
 local Lateral = Instance.new("Frame")
 Lateral.Parent = MF
 Lateral.BackgroundColor3 = Color3.fromRGB(25,25,25)
 Lateral.Size = UDim2.new(0,55,1,-36)
 Lateral.Position = UDim2.new(0,0,0,36)
+Lateral.ZIndex = 6
 
 local Conteudo = Instance.new("Frame")
 Conteudo.Parent = MF
 Conteudo.BackgroundTransparency = 1
 Conteudo.Size = UDim2.new(1,-55,1,-36)
 Conteudo.Position = UDim2.new(0,55,0,36)
+Conteudo.ZIndex = 6
 
 local sep = function(pai, y)
     local s = Instance.new("Frame")
@@ -540,6 +640,7 @@ local sep = function(pai, y)
     s.BackgroundColor3 = atualizarCorRainbow()
     s.Size = UDim2.new(0.92,0,0,1)
     s.Position = UDim2.new(0.04,0,0,y)
+    s.ZIndex = 6
 end
 
 local function abaLateral(icone, indice)
@@ -552,6 +653,7 @@ local function abaLateral(icone, indice)
     btn.TextColor3 = Color3.fromRGB(255,255,255)
     btn.Font = Enum.Font.GothamBold
     btn.TextScaled = true
+    btn.ZIndex = 6
     Instance.new("UICorner",btn).CornerRadius = UDim.new(0,8)
     return btn
 end
@@ -571,12 +673,14 @@ local function criarBotaoSwitch(pai, posY, texto, valorAtual, funcaoMudar)
     lblTexto.TextColor3 = Color3.fromRGB(255,255,255)
     lblTexto.TextScaled = true
     lblTexto.Font = Enum.Font.Gotham
+    lblTexto.ZIndex = 7
 
     local fundo = Instance.new("Frame")
     fundo.Parent = pai
     fundo.Size = UDim2.new(0,48,0,24)
     fundo.Position = UDim2.new(0.75,0,0,posY+2)
     fundo.BackgroundColor3 = Color3.fromRGB(60,60,60)
+    fundo.ZIndex = 7
     Instance.new("UICorner",fundo).CornerRadius = UDim.new(0,12)
 
     local botao = Instance.new("Frame")
@@ -584,6 +688,7 @@ local function criarBotaoSwitch(pai, posY, texto, valorAtual, funcaoMudar)
     botao.Size = UDim2.new(0,18,0,18)
     botao.Position = UDim2.new(0,3,0.5,-9)
     botao.BackgroundColor3 = Color3.fromRGB(255,255,255)
+    botao.ZIndex = 8
     Instance.new("UICorner",botao).CornerRadius = UDim.new(1,0)
 
     local clique = Instance.new("TextButton")
@@ -591,11 +696,13 @@ local function criarBotaoSwitch(pai, posY, texto, valorAtual, funcaoMudar)
     clique.Size = UDim2.new(1,0,1,0)
     clique.BackgroundTransparency = 1
     clique.Text = ""
+    clique.ZIndex = 9
     clique.MouseButton1Click:Connect(function()
         local novoValor = not valorAtual()
         funcaoMudar(novoValor)
         fundo.BackgroundColor3 = novoValor and atualizarCorRainbow() or Color3.fromRGB(60,60,60)
         botao.Position = novoValor and UDim2.new(1,-21,0.5,-9) or UDim2.new(0,3,0.5,-9)
+        mostrarNotificacao(texto .. ": " .. (novoValor and "ON" or "OFF"))
     end)
 end
 
@@ -604,6 +711,7 @@ AimConteudo.Parent = Conteudo
 AimConteudo.BackgroundTransparency = 1
 AimConteudo.Size = UDim2.new(1,0,1,0)
 AimConteudo.Visible = true
+AimConteudo.ZIndex = 6
 
 criarBotaoSwitch(AimConteudo, 10, "Ativar Aimbot", function() return Config.Aimbot end, function(v) Config.Aimbot = v end)
 sep(AimConteudo,48)
@@ -618,6 +726,7 @@ lblTipoMira.Position = UDim2.new(0.05,0,0,102)
 lblTipoMira.Text = "Tipo de Mira"
 lblTipoMira.TextColor3 = Color3.fromRGB(255,255,255)
 lblTipoMira.TextScaled = true
+lblTipoMira.ZIndex = 7
 
 local TipoBtn = Instance.new("TextButton")
 TipoBtn.Parent = AimConteudo
@@ -627,6 +736,7 @@ TipoBtn.Position = UDim2.new(0.55,0,0,102)
 TipoBtn.Text = Config.AimType
 TipoBtn.TextColor3 = Color3.fromRGB(255,255,255)
 TipoBtn.TextScaled = true
+TipoBtn.ZIndex = 7
 Instance.new("UICorner",TipoBtn).CornerRadius = UDim.new(0,6)
 TipoBtn.MouseButton1Click:Connect(function()
     if Config.AimType == "Ao Olhar" then Config.AimType = "Ao Atirar" else Config.AimType = "Ao Olhar" end
@@ -642,6 +752,7 @@ lblParteCorpo.Position = UDim2.new(0.05,0,0,150)
 lblParteCorpo.Text = "Parte do Corpo"
 lblParteCorpo.TextColor3 = Color3.fromRGB(255,255,255)
 lblParteCorpo.TextScaled = true
+lblParteCorpo.ZIndex = 7
 
 local ParteBtn = Instance.new("TextButton")
 ParteBtn.Parent = AimConteudo
@@ -651,6 +762,7 @@ ParteBtn.Position = UDim2.new(0.55,0,0,150)
 ParteBtn.Text = "Cabeça"
 ParteBtn.TextColor3 = Color3.fromRGB(255,255,255)
 ParteBtn.TextScaled = true
+ParteBtn.ZIndex = 7
 Instance.new("UICorner",ParteBtn).CornerRadius = UDim.new(0,6)
 ParteBtn.MouseButton1Click:Connect(function()
     Config.TargetPart = Config.TargetPart == "Head" and "Torso" or "Head"
@@ -666,6 +778,7 @@ lblFOV.Position = UDim2.new(0.05,0,0,195)
 lblFOV.Text = "FOV: "..Config.FOV
 lblFOV.TextColor3 = Color3.fromRGB(255,255,255)
 lblFOV.TextScaled = true
+lblFOV.ZIndex = 7
 
 local bFovMenos = Instance.new("TextButton")
 bFovMenos.Parent = AimConteudo
@@ -674,6 +787,7 @@ bFovMenos.Size = UDim2.new(0.12,0,0,24)
 bFovMenos.Position = UDim2.new(0.55,0,0,195)
 bFovMenos.Text = "-"
 bFovMenos.TextScaled = true
+bFovMenos.ZIndex = 7
 Instance.new("UICorner",bFovMenos).CornerRadius = UDim.new(0,6)
 bFovMenos.MouseButton1Click:Connect(function()
     Config.FOV = math.max(Config.FOV-10,30)
@@ -687,6 +801,7 @@ bFovMais.Size = UDim2.new(0.12,0,0,24)
 bFovMais.Position = UDim2.new(0.70,0,0,195)
 bFovMais.Text = "+"
 bFovMais.TextScaled = true
+bFovMais.ZIndex = 7
 Instance.new("UICorner",bFovMais).CornerRadius = UDim.new(0,6)
 bFovMais.MouseButton1Click:Connect(function()
     Config.FOV = math.min(Config.FOV+10,400)
@@ -702,6 +817,7 @@ lblSmooth.Position = UDim2.new(0.05,0,0,240)
 lblSmooth.Text = "Suavidade: "..string.format("%.1f",Config.Smooth)
 lblSmooth.TextColor3 = Color3.fromRGB(255,255,255)
 lblSmooth.TextScaled = true
+lblSmooth.ZIndex = 7
 
 local bSmMenos = Instance.new("TextButton")
 bSmMenos.Parent = AimConteudo
@@ -710,6 +826,7 @@ bSmMenos.Size = UDim2.new(0.12,0,0,24)
 bSmMenos.Position = UDim2.new(0.55,0,0,240)
 bSmMenos.Text = "-"
 bSmMenos.TextScaled = true
+bSmMenos.ZIndex = 7
 Instance.new("UICorner",bSmMenos).CornerRadius = UDim.new(0,6)
 bSmMenos.MouseButton1Click:Connect(function()
     Config.Smooth = math.max(Config.Smooth-0.1,0.1)
@@ -723,6 +840,7 @@ bSmMais.Size = UDim2.new(0.12,0,0,24)
 bSmMais.Position = UDim2.new(0.70,0,0,240)
 bSmMais.Text = "+"
 bSmMais.TextScaled = true
+bSmMais.ZIndex = 7
 Instance.new("UICorner",bSmMais).CornerRadius = UDim.new(0,6)
 bSmMais.MouseButton1Click:Connect(function()
     Config.Smooth = math.min(Config.Smooth+0.1,1)
@@ -743,12 +861,13 @@ coroutine.wrap(function()
         end)
     end
 end)()
--- @NoobZinx - PARTE 3/4 (ESP + CONFIG + INFO)
+-- @NoobZinx - PARTE 3/5 (ESP + CONFIG COM SCROLLINGFRAME + FLY + INFO)
 local EspConteudo = Instance.new("Frame")
 EspConteudo.Parent = Conteudo
 EspConteudo.BackgroundTransparency = 1
 EspConteudo.Size = UDim2.new(1,0,1,0)
 EspConteudo.Visible = false
+EspConteudo.ZIndex = 6
 
 criarBotaoSwitch(EspConteudo, 10, "Ativar ESP", function() return Config.ESP end, function(v) 
     Config.ESP = v
@@ -769,30 +888,45 @@ criarBotaoSwitch(EspConteudo, 190, "ESP Linha", function() return Config.ESP_Lin
 sep(EspConteudo,222)
 criarBotaoSwitch(EspConteudo, 232, "Mostrar Distância", function() return Config.ESP_Distancia end, function(v) Config.ESP_Distancia = v end)
 
+-- Configurações com ScrollingFrame
 local ConfConteudo = Instance.new("Frame")
 ConfConteudo.Parent = Conteudo
 ConfConteudo.BackgroundTransparency = 1
 ConfConteudo.Size = UDim2.new(1,0,1,0)
 ConfConteudo.Visible = false
+ConfConteudo.ZIndex = 6
 
-criarBotaoSwitch(ConfConteudo, 10, "Modo Veloz", function() return Config.Speed end, function(v) Config.Speed = v end)
-sep(ConfConteudo,48)
+local ConfScroll = Instance.new("ScrollingFrame")
+ConfScroll.Parent = ConfConteudo
+ConfScroll.BackgroundTransparency = 1
+ConfScroll.Size = UDim2.new(1,0,1,0)
+ConfScroll.Position = UDim2.new(0,0,0,0)
+ConfScroll.CanvasSize = UDim2.new(0,0,0,560)
+ConfScroll.ScrollBarThickness = 4
+ConfScroll.ScrollBarImageColor3 = atualizarCorRainbow()
+ConfScroll.ZIndex = 6
+ConfScroll.BorderSizePixel = 0
+
+criarBotaoSwitch(ConfScroll, 10, "Modo Veloz", function() return Config.Speed end, function(v) Config.Speed = v end)
+sep(ConfScroll,48)
 local lblVel = Instance.new("TextLabel")
-lblVel.Parent = ConfConteudo
+lblVel.Parent = ConfScroll
 lblVel.BackgroundTransparency = 1
 lblVel.Size = UDim2.new(0.40,0,0,24)
 lblVel.Position = UDim2.new(0.05,0,0,58)
 lblVel.Text = "Velocidade: "..Config.SpeedMul
 lblVel.TextColor3 = Color3.fromRGB(255,255,255)
 lblVel.TextScaled = true
+lblVel.ZIndex = 7
 
 local bVelMenos = Instance.new("TextButton")
-bVelMenos.Parent = ConfConteudo
+bVelMenos.Parent = ConfScroll
 bVelMenos.BackgroundColor3 = Color3.fromRGB(50,50,50)
 bVelMenos.Size = UDim2.new(0.12,0,0,24)
 bVelMenos.Position = UDim2.new(0.55,0,0,58)
 bVelMenos.Text = "-"
 bVelMenos.TextScaled = true
+bVelMenos.ZIndex = 7
 Instance.new("UICorner",bVelMenos).CornerRadius = UDim.new(0,6)
 bVelMenos.MouseButton1Click:Connect(function()
     Config.SpeedMul = math.max(Config.SpeedMul-5,16)
@@ -800,25 +934,26 @@ bVelMenos.MouseButton1Click:Connect(function()
 end)
 
 local bVelMais = Instance.new("TextButton")
-bVelMais.Parent = ConfConteudo
+bVelMais.Parent = ConfScroll
 bVelMais.BackgroundColor3 = atualizarCorRainbow()
 bVelMais.Size = UDim2.new(0.12,0,0,24)
 bVelMais.Position = UDim2.new(0.70,0,0,58)
 bVelMais.Text = "+"
 bVelMais.TextScaled = true
+bVelMais.ZIndex = 7
 Instance.new("UICorner",bVelMais).CornerRadius = UDim.new(0,6)
 bVelMais.MouseButton1Click:Connect(function()
     Config.SpeedMul = math.min(Config.SpeedMul+5,200)
     lblVel.Text = "Velocidade: "..Config.SpeedMul
 end)
-sep(ConfConteudo,92)
-criarBotaoSwitch(ConfConteudo, 102, "Super Pulo", function() return Config.SuperJump end, function(v) Config.SuperJump = v end)
-sep(ConfConteudo,136)
-criarBotaoSwitch(ConfConteudo, 146, "Atravessar Paredes", function() return Config.AtravessarParede end, function(v) Config.AtravessarParede = v end)
-sep(ConfConteudo,180)
-criarBotaoSwitch(ConfConteudo, 190, "Cores Arco-Íris", function() return Config.Rainbow end, function(v) Config.Rainbow = v end)
-sep(ConfConteudo,222)
-criarBotaoSwitch(ConfConteudo, 232, "🎯 Hitbox Ampliada", function() return Config.HitboxAmpliada end, function(v) 
+sep(ConfScroll,92)
+criarBotaoSwitch(ConfScroll, 102, "Super Pulo", function() return Config.SuperJump end, function(v) Config.SuperJump = v end)
+sep(ConfScroll,136)
+criarBotaoSwitch(ConfScroll, 146, "Atravessar Paredes", function() return Config.AtravessarParede end, function(v) Config.AtravessarParede = v end)
+sep(ConfScroll,180)
+criarBotaoSwitch(ConfScroll, 190, "Cores Arco-Íris", function() return Config.Rainbow end, function(v) Config.Rainbow = v end)
+sep(ConfScroll,222)
+criarBotaoSwitch(ConfScroll, 232, "🎯 Hitbox Ampliada", function() return Config.HitboxAmpliada end, function(v) 
     Config.HitboxAmpliada = v 
     if v then 
         if ativarHitbox then ativarHitbox() end
@@ -826,8 +961,8 @@ criarBotaoSwitch(ConfConteudo, 232, "🎯 Hitbox Ampliada", function() return Co
         if desativarHitbox then desativarHitbox() end
     end
 end)
-sep(ConfConteudo,266)
-criarBotaoSwitch(ConfConteudo, 276, "🚀 FPS BOOSTER", function() return Config.FPSBooster end, function(v) 
+sep(ConfScroll,266)
+criarBotaoSwitch(ConfScroll, 276, "🚀 FPS BOOSTER", function() return Config.FPSBooster end, function(v) 
     Config.FPSBooster = v 
     if v then 
         if ativarFPSBooster then ativarFPSBooster() end
@@ -835,14 +970,30 @@ criarBotaoSwitch(ConfConteudo, 276, "🚀 FPS BOOSTER", function() return Config
         if desativarFPSBooster then desativarFPSBooster() end
     end
 end)
-sep(ConfConteudo,310)
-criarBotaoSwitch(ConfConteudo, 320, "💀 Puxar Players", function() return Config.KillAll end, function(v) Config.KillAll = v end)
+sep(ConfScroll,310)
+criarBotaoSwitch(ConfScroll, 320, "💀 Puxar Players", function() return Config.KillAll end, function(v) Config.KillAll = v end)
+sep(ConfScroll,354)
+criarBotaoSwitch(ConfScroll, 364, "🕊️ Fly", function() return Config.Fly end, function(v) 
+    Config.Fly = v 
+    if v then 
+        if ativarFly then ativarFly() end
+    else 
+        if desativarFly then desativarFly() end
+    end
+end)
+sep(ConfScroll,398)
+criarBotaoSwitch(ConfScroll, 408, "📶 Mostrar Ping", function() return Config.MostrarPing end, function(v) Config.MostrarPing = v end)
+sep(ConfScroll,442)
+criarBotaoSwitch(ConfScroll, 452, "👥 Mostrar Players", function() return Config.MostrarPlayers end, function(v) Config.MostrarPlayers = v end)
+sep(ConfScroll,486)
+criarBotaoSwitch(ConfScroll, 496, "📱 Mostrar FPS", function() return Config.MostrarFPS end, function(v) Config.MostrarFPS = v end)
 
 local InfoConteudo = Instance.new("Frame")
 InfoConteudo.Parent = Conteudo
 InfoConteudo.BackgroundTransparency = 1
 InfoConteudo.Size = UDim2.new(1,0,1,0)
 InfoConteudo.Visible = false
+InfoConteudo.ZIndex = 6
 
 local avisoTopo = Instance.new("TextLabel")
 avisoTopo.Parent = InfoConteudo
@@ -853,6 +1004,7 @@ avisoTopo.Text = "⚠️ USO POR CONTA E RISCO"
 avisoTopo.TextColor3 = Color3.fromRGB(255,60,60)
 avisoTopo.Font = Enum.Font.GothamBold
 avisoTopo.TextScaled = true
+avisoTopo.ZIndex = 7
 
 lblFPS = Instance.new("TextLabel")
 lblFPS.Parent = InfoConteudo
@@ -862,6 +1014,7 @@ lblFPS.Position = UDim2.new(0.1,0,0,52)
 lblFPS.Text = "FPS: --"
 lblFPS.TextColor3 = Color3.fromRGB(80,255,80)
 lblFPS.TextScaled = true
+lblFPS.ZIndex = 7
 
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Parent = InfoConteudo
@@ -872,6 +1025,7 @@ statusLabel.Text = "Status: Online"
 statusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
 statusLabel.TextScaled = true
 statusLabel.Font = Enum.Font.GothamBold
+statusLabel.ZIndex = 7
 
 local relogio = Instance.new("TextLabel")
 relogio.Parent = InfoConteudo
@@ -882,6 +1036,7 @@ relogio.Text = "🕐 00:00:00"
 relogio.TextColor3 = Color3.fromRGB(255,255,255)
 relogio.TextScaled = true
 relogio.Font = Enum.Font.GothamBold
+relogio.ZIndex = 7
 
 coroutine.wrap(function()
     while task.wait(1) do
@@ -902,6 +1057,7 @@ for i,item in ipairs(dados) do
     tEsq.TextColor3 = atualizarCorRainbow()
     tEsq.TextScaled = true
     tEsq.TextXAlignment = Enum.TextXAlignment.Right
+    tEsq.ZIndex = 7
 
     local tDir = Instance.new("TextLabel")
     tDir.Parent = InfoConteudo
@@ -911,6 +1067,7 @@ for i,item in ipairs(dados) do
     tDir.Text = item[2]
     tDir.TextColor3 = Color3.fromRGB(255,255,255)
     tDir.TextScaled = true
+    tDir.ZIndex = 7
 end
 
 -- ═══════════════════════════════════════════════════════
@@ -936,7 +1093,7 @@ bAim.MouseButton1Click:Connect(function() mudarAba(bAim, AimConteudo) end)
 bEsp.MouseButton1Click:Connect(function() mudarAba(bEsp, EspConteudo) end)
 bConf.MouseButton1Click:Connect(function() mudarAba(bConf, ConfConteudo) end)
 bInfo.MouseButton1Click:Connect(function() mudarAba(bInfo, InfoConteudo) end)
--- @NoobZinx - PARTE 4/4 (FUNÇÕES + ESP CORRIGIDO + FOV RAINBOW MAIS LENTO)
+-- @NoobZinx - PARTE 4/5 (FUNÇÕES + FLY + ESP ROXO)
 local hitboxConnection = nil
 local tamanhoOriginal = {}
 
@@ -1037,13 +1194,101 @@ function puxarPlayers()
 end
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 ESP (CORRIGIDO PARA FUNCIONAR EM QUALQUER DISPOSITIVO)
+-- 🔥 SISTEMA DE FLY
+-- ═══════════════════════════════════════════════════════
+local flyConnection = nil
+local flyBodyVelocity = nil
+local flyBodyGyro = nil
+
+function ativarFly()
+    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
+    if not Config.Fly then return end
+    
+    local char = LocalPlayer.Character
+    if not char then return end
+    
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local hum = char:FindFirstChild("Humanoid")
+    if not root or not hum then return end
+    
+    flyBodyVelocity = Instance.new("BodyVelocity")
+    flyBodyVelocity.Parent = root
+    flyBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+    flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    
+    flyBodyGyro = Instance.new("BodyGyro")
+    flyBodyGyro.Parent = root
+    flyBodyGyro.MaxTorque = Vector3.new(0, 0, 0)
+    flyBodyGyro.CFrame = root.CFrame
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        if not Config.Fly then desativarFly(); return end
+        
+        local charAtual = LocalPlayer.Character
+        if not charAtual then desativarFly(); return end
+        
+        local rootAtual = charAtual:FindFirstChild("HumanoidRootPart")
+        local humAtual = charAtual:FindFirstChild("Humanoid")
+        if not rootAtual or not humAtual or humAtual.Health <= 0 then
+            desativarFly()
+            return
+        end
+        
+        if not flyBodyVelocity or not flyBodyVelocity.Parent then
+            flyBodyVelocity = Instance.new("BodyVelocity")
+            flyBodyVelocity.Parent = rootAtual
+        end
+        
+        if not flyBodyGyro or not flyBodyGyro.Parent then
+            flyBodyGyro = Instance.new("BodyGyro")
+            flyBodyGyro.Parent = rootAtual
+        end
+        
+        flyBodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+        flyBodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+        flyBodyGyro.CFrame = Camera.CFrame
+        
+        local velocidade = Vector3.new(0, 0, 0)
+        local velocidadeVoo = 50
+        
+        if UserInput:IsKeyDown(Enum.KeyCode.W) then
+            velocidade = velocidade + Camera.CFrame.LookVector * velocidadeVoo
+        end
+        if UserInput:IsKeyDown(Enum.KeyCode.S) then
+            velocidade = velocidade - Camera.CFrame.LookVector * velocidadeVoo
+        end
+        if UserInput:IsKeyDown(Enum.KeyCode.A) then
+            velocidade = velocidade - Camera.CFrame.RightVector * velocidadeVoo
+        end
+        if UserInput:IsKeyDown(Enum.KeyCode.D) then
+            velocidade = velocidade + Camera.CFrame.RightVector * velocidadeVoo
+        end
+        if UserInput:IsKeyDown(Enum.KeyCode.Space) then
+            velocidade = velocidade + Vector3.new(0, velocidadeVoo, 0)
+        end
+        if UserInput:IsKeyDown(Enum.KeyCode.LeftShift) or UserInput:IsKeyDown(Enum.KeyCode.RightShift) then
+            velocidade = velocidade - Vector3.new(0, velocidadeVoo, 0)
+        end
+        
+        flyBodyVelocity.Velocity = velocidade
+    end)
+end
+
+function desativarFly()
+    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
+    if flyBodyVelocity then pcall(function() flyBodyVelocity:Destroy() end); flyBodyVelocity = nil end
+    if flyBodyGyro then pcall(function() flyBodyGyro:Destroy() end); flyBodyGyro = nil end
+end
+
+-- ═══════════════════════════════════════════════════════
+-- 🔥 ESP (COR ROXA)
 -- ═══════════════════════════════════════════════════════
 local desenhosESP = {}
 local tempoCor = 0
 local espConnection = nil
 local heartBeatConnection = nil
 local espAtivo = false
+local COR_ROXA = Color3.fromRGB(138, 43, 226)
 
 local function pegarCorRainbow()
     tempoCor = tempoCor + 0.015
@@ -1119,7 +1364,7 @@ function ativarESPCompleto()
                     desenhosESP[p].barraVida.Filled = true
                     desenhosESP[p].barraVida.Color = Color3.fromRGB(0,210,0)
                     desenhosESP[p].barraVida.Visible = false
-                    desenhosESP[p].name.Color = Color3.fromRGB(255,20,147)
+                    desenhosESP[p].name.Color = COR_ROXA
                     desenhosESP[p].name.Visible = false
                     desenhosESP[p].linha.Thickness = 2
                     desenhosESP[p].linha.Visible = false
@@ -1158,7 +1403,7 @@ function ativarESPCompleto()
                 continue
             end
             
-            local cor = Config.Rainbow and pegarCorRainbow() or Color3.fromRGB(255,20,147)
+            local cor = Config.Rainbow and pegarCorRainbow() or COR_ROXA
             d.box.Color = cor
             d.linha.Color = cor
             d.name.Color = cor
@@ -1205,7 +1450,7 @@ function ativarESPCompleto()
         limparDesenhosJogador(p)
     end)
 end
-
+-- @NoobZinx - PARTE 5/5 (MOSTRADORES + FOV + AIMBOT + FIM)
 -- ═══════════════════════════════════════════════════════
 -- 🔥 CONTADOR DE FPS
 -- ═══════════════════════════════════════════════════════
@@ -1221,6 +1466,69 @@ coroutine.wrap(function()
         ultimoFPS = agora; contFPS = 0
     end
 end)()
+
+-- ═══════════════════════════════════════════════════════
+-- 🔥 MOSTRADORES NA TELA (PING, PLAYERS, FPS)
+-- ═══════════════════════════════════════════════════════
+mostradorPing = Drawing.new("Text")
+mostradorPing.Color = Color3.fromRGB(255,255,255)
+mostradorPing.Size = 16
+mostradorPing.Position = Vector2.new(10, 80)
+mostradorPing.Visible = false
+
+mostradorPlayers = Drawing.new("Text")
+mostradorPlayers.Color = Color3.fromRGB(255,255,255)
+mostradorPlayers.Size = 16
+mostradorPlayers.Position = Vector2.new(10, 105)
+mostradorPlayers.Visible = false
+
+mostradorFPS = Drawing.new("Text")
+mostradorFPS.Color = Color3.fromRGB(255,255,255)
+mostradorFPS.Size = 16
+mostradorFPS.Position = Vector2.new(10, 130)
+mostradorFPS.Visible = false
+
+local contFPS2 = 0
+local ultimoFPS2 = os.clock()
+
+coroutine.wrap(function()
+    while true do
+        task.wait(0.5)
+        pcall(function()
+            if Config.MostrarPing then
+                mostradorPing.Visible = true
+                local ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+                mostradorPing.Text = "📶 Ping: " .. math.floor(ping) .. "ms"
+            else
+                mostradorPing.Visible = false
+            end
+            
+            if Config.MostrarPlayers then
+                mostradorPlayers.Visible = true
+                local total = #Players:GetPlayers()
+                local maximo = Players.MaxPlayers
+                mostradorPlayers.Text = "👥 Players: " .. total .. "/" .. maximo
+            else
+                mostradorPlayers.Visible = false
+            end
+            
+            if Config.MostrarFPS then
+                mostradorFPS.Visible = true
+                local agora = os.clock()
+                local fps = math.floor(contFPS2 / (agora - ultimoFPS2) + 0.5)
+                mostradorFPS.Text = "📱 FPS: " .. fps
+                ultimoFPS2 = agora
+                contFPS2 = 0
+            else
+                mostradorFPS.Visible = false
+            end
+        end)
+    end
+end)()
+
+RunService.RenderStepped:Connect(function()
+    contFPS2 = contFPS2 + 1
+end)
 
 -- ═══════════════════════════════════════════════════════
 -- 🔥 LOOP PRINCIPAL (SPEED + JUMP)
@@ -1318,6 +1626,7 @@ end)
 if Config.HitboxAmpliada then ativarHitbox() end
 if Config.FPSBooster then ativarFPSBooster() end
 if Config.ESP then ativarESPCompleto() end
+if Config.Fly then ativarFly() end
 
 end -- FECHA IniciarMenu
 
