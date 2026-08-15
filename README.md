@@ -1,4 +1,4 @@
--- @NoobZinx - PARTE 1/5 (INTERFACE + LICENÇA ISOLADA)
+-- @NoobZinx - PARTE 1/5 (INTERFACE + LICENÇA ISOLADA + SISTEMA DE KEY ATUALIZADO)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
@@ -27,6 +27,7 @@ local Config = {
 -- ═══════════════════════════════════════════════════════
 local USER_ID = LocalPlayer.UserId
 local ARQUIVO_LICENCA = "NoobZinx_licenca.txt"
+local ARQUIVO_KEYS_ATIVADAS = "NoobZinx_keys_ativadas.txt"
 
 -- Banco de dados global
 if not _G.KeysDatabase then
@@ -38,6 +39,33 @@ end
 if not _G.KeysUtilizadas then
     _G.KeysUtilizadas = {}
 end
+if not _G.KeysAtivadas then
+    _G.KeysAtivadas = {}
+end
+
+-- ═══════════════════════════════════════════════════════
+-- 📂 FUNÇÕES DE PERSISTÊNCIA DE KEYS ATIVADAS
+-- ═══════════════════════════════════════════════════════
+local function salvarKeysAtivadas()
+    pcall(function()
+        local dados = HttpService:JSONEncode(_G.KeysAtivadas)
+        writefile(ARQUIVO_KEYS_ATIVADAS, dados)
+    end)
+end
+
+local function carregarKeysAtivadas()
+    pcall(function()
+        if isfile(ARQUIVO_KEYS_ATIVADAS) then
+            local dados = readfile(ARQUIVO_KEYS_ATIVADAS)
+            local banco = HttpService:JSONDecode(dados)
+            for key, info in pairs(banco) do
+                _G.KeysAtivadas[key] = info
+            end
+        end
+    end)
+end
+
+carregarKeysAtivadas()
 
 -- ═══════════════════════════════════════════════════════
 -- 🛡️ PROTEÇÃO ANTI-DUPLICAÇÃO
@@ -112,8 +140,29 @@ local function validarKeySistema(key)
     local infoKey = extrairInfoKey(key)
     if not infoKey then return false, nil end
     
-    if _G.KeysUtilizadas and _G.KeysUtilizadas[key] then
-        return false, "utilizada"
+    -- Verifica se a Key já foi ativada (usada em algum dispositivo)
+    if _G.KeysAtivadas and _G.KeysAtivadas[key] then
+        local infoAtivacao = _G.KeysAtivadas[key]
+        
+        -- Se for VIP Permanente, permite reutilizar no mesmo usuário
+        if infoKey.tipo == "VIP Permanente" and infoAtivacao.userId == USER_ID then
+            return true, infoKey
+        end
+        
+        -- Se já foi ativada, verifica se expirou
+        if infoAtivacao.dataExpiracao then
+            if infoAtivacao.dataExpiracao > os.time() then
+                -- Ainda válida, mas já foi usada por outro dispositivo
+                if infoAtivacao.userId ~= USER_ID then
+                    return false, "utilizada"
+                end
+                -- Mesmo usuário, permite continuar usando
+                return true, infoKey
+            else
+                -- Expirada
+                return false, "expirada"
+            end
+        end
     end
     
     return true, infoKey
@@ -174,6 +223,16 @@ local function ativarKey(key, keyData)
     }
     _G.Licencas[USER_ID] = licenca
     salvarLicenca(licenca)
+    
+    -- Registra a Key como ativada globalmente
+    _G.KeysAtivadas[key] = {
+        userId = USER_ID,
+        dataAtivacao = os.time(),
+        dataExpiracao = dataExpiracao,
+        tipo = keyData.tipo
+    }
+    salvarKeysAtivadas()
+    
     return true
 end
 
@@ -286,6 +345,8 @@ local function verificarKey()
     if not keyValida then
         if keyData == "utilizada" then
             if MensagemErro then MensagemErro.Text = "❌ KEY JÁ UTILIZADA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
+        elseif keyData == "expirada" then
+            if MensagemErro then MensagemErro.Text = "⏰ KEY EXPIRADA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,165,0) end
         else
             if MensagemErro then MensagemErro.Text = "❌ KEY INVÁLIDA!"; MensagemErro.TextColor3 = Color3.fromRGB(255,0,0) end
         end
@@ -294,11 +355,6 @@ local function verificarKey()
     end
     
     if ativarKey(key, keyData) then
-        _G.KeysUtilizadas[key] = {
-            userId = USER_ID,
-            dataUso = os.time()
-        }
-        
         if MensagemErro then MensagemErro.Text = "✅ KEY VÁLIDA! Carregando..."; MensagemErro.TextColor3 = Color3.fromRGB(0,255,0) end
         task.wait(0.5)
         if TelaKey then TelaKey:Destroy(); TelaKey = nil end
