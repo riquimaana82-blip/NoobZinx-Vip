@@ -140,26 +140,20 @@ local function validarKeySistema(key)
     local infoKey = extrairInfoKey(key)
     if not infoKey then return false, nil end
     
-    -- Verifica se a Key já foi ativada (usada em algum dispositivo)
     if _G.KeysAtivadas and _G.KeysAtivadas[key] then
         local infoAtivacao = _G.KeysAtivadas[key]
         
-        -- Se for VIP Permanente, permite reutilizar no mesmo usuário
         if infoKey.tipo == "VIP Permanente" and infoAtivacao.userId == USER_ID then
             return true, infoKey
         end
         
-        -- Se já foi ativada, verifica se expirou
         if infoAtivacao.dataExpiracao then
             if infoAtivacao.dataExpiracao > os.time() then
-                -- Ainda válida, mas já foi usada por outro dispositivo
                 if infoAtivacao.userId ~= USER_ID then
                     return false, "utilizada"
                 end
-                -- Mesmo usuário, permite continuar usando
                 return true, infoKey
             else
-                -- Expirada
                 return false, "expirada"
             end
         end
@@ -224,7 +218,6 @@ local function ativarKey(key, keyData)
     _G.Licencas[USER_ID] = licenca
     salvarLicenca(licenca)
     
-    -- Registra a Key como ativada globalmente
     _G.KeysAtivadas[key] = {
         userId = USER_ID,
         dataAtivacao = os.time(),
@@ -258,7 +251,6 @@ local TelaKey = nil
 local InputKey = nil
 local MensagemErro = nil
 
--- Variáveis para novos recursos
 local notificacoes = {}
 local mostradorPing = nil
 local mostradorPlayers = nil
@@ -467,7 +459,6 @@ local function criarTelaKey()
         if enter then verificarKey() end
     end)
     
-    -- Loop para atualizar a cor rainbow da tela de key (mais lento)
     coroutine.wrap(function()
         while TelaKey and PainelKey and PainelKey.Parent do
             task.wait(0.1)
@@ -561,7 +552,7 @@ coroutine.wrap(function()
         end
     end
 end)()
--- @NoobZinx - PARTE 2/5 (PAINEL + BOTÃO MENU CORRIGIDO)
+-- @NoobZinx - PARTE 2/5 (PAINEL + BOTÃO MENU CORRIGIDO + PERFIL NA BARRA LATERAL)
 function IniciarMenu()
     if menuCriado then 
         print("⚠️ Menu já criado! Ignorando...")
@@ -625,7 +616,6 @@ UserInput.InputEnded:Connect(function(input)
     end
 end)
 
--- Clique normal para abrir/fechar o painel
 OB.MouseButton1Click:Connect(function()
     if not moveuOB then
         MF.Visible = true
@@ -718,6 +708,48 @@ local bAim = abaLateral("🎯",1)
 local bEsp = abaLateral("👁",2)
 local bConf = abaLateral("⚙",3)
 local bInfo = abaLateral("📄",4)
+
+-- ═══════════════════════════════════════════════════════
+-- 👤 PERFIL DO USUÁRIO NA BARRA LATERAL
+-- ═══════════════════════════════════════════════════════
+local PerfilFrame = Instance.new("Frame")
+PerfilFrame.Parent = Lateral
+PerfilFrame.BackgroundTransparency = 1
+PerfilFrame.Size = UDim2.new(1,0,0,80)
+PerfilFrame.Position = UDim2.new(0,0,0,220)
+PerfilFrame.ZIndex = 7
+
+local FotoAvatar = Instance.new("ImageLabel")
+FotoAvatar.Parent = PerfilFrame
+FotoAvatar.BackgroundColor3 = Color3.fromRGB(35,35,35)
+FotoAvatar.Size = UDim2.new(0,35,0,35)
+FotoAvatar.Position = UDim2.new(0.5,-17,0,5)
+FotoAvatar.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+FotoAvatar.ScaleType = Enum.ScaleType.Crop
+FotoAvatar.ZIndex = 7
+Instance.new("UICorner",FotoAvatar).CornerRadius = UDim.new(1,0)
+
+task.spawn(function()
+    pcall(function()
+        local userId = LocalPlayer.UserId
+        local thumbType = Enum.ThumbnailType.HeadShot
+        local thumbSize = Enum.ThumbnailSize.Size48x48
+        local conteudo, isReady = Players:GetUserThumbnailAsync(userId, thumbType, thumbSize)
+        FotoAvatar.Image = conteudo
+    end)
+end)
+
+local NomeUsuario = Instance.new("TextLabel")
+NomeUsuario.Parent = PerfilFrame
+NomeUsuario.BackgroundTransparency = 1
+NomeUsuario.Size = UDim2.new(1,0,0,20)
+NomeUsuario.Position = UDim2.new(0,0,0,45)
+NomeUsuario.Text = "@" .. LocalPlayer.Name
+NomeUsuario.TextColor3 = Color3.fromRGB(255,255,255)
+NomeUsuario.TextScaled = true
+NomeUsuario.Font = Enum.Font.GothamBold
+NomeUsuario.ZIndex = 7
+NomeUsuario.TextWrapped = true
 
 local function criarBotaoSwitch(pai, posY, texto, valorAtual, funcaoMudar)
     local lblTexto = Instance.new("TextLabel")
@@ -1149,7 +1181,7 @@ bAim.MouseButton1Click:Connect(function() mudarAba(bAim, AimConteudo) end)
 bEsp.MouseButton1Click:Connect(function() mudarAba(bEsp, EspConteudo) end)
 bConf.MouseButton1Click:Connect(function() mudarAba(bConf, ConfConteudo) end)
 bInfo.MouseButton1Click:Connect(function() mudarAba(bInfo, InfoConteudo) end)
--- @NoobZinx - PARTE 4/5 (FUNÇÕES + FLY + ESP ROXO)
+-- @NoobZinx - PARTE 4/5 (FUNÇÕES + FLY CORRIGIDO + ESP ROXO)
 local hitboxConnection = nil
 local tamanhoOriginal = {}
 
@@ -1250,11 +1282,12 @@ function puxarPlayers()
 end
 
 -- ═══════════════════════════════════════════════════════
--- 🔥 SISTEMA DE FLY
+-- 🔥 SISTEMA DE FLY (CORRIGIDO - USA BODYPOSITION PARA SUAVIZAR)
 -- ═══════════════════════════════════════════════════════
 local flyConnection = nil
 local flyBodyVelocity = nil
 local flyBodyGyro = nil
+local flyBodyPosition = nil
 
 function ativarFly()
     if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
@@ -1267,15 +1300,29 @@ function ativarFly()
     local hum = char:FindFirstChild("Humanoid")
     if not root or not hum then return end
     
+    -- BodyVelocity para movimento horizontal
     flyBodyVelocity = Instance.new("BodyVelocity")
     flyBodyVelocity.Parent = root
-    flyBodyVelocity.MaxForce = Vector3.new(0, 0, 0)
+    flyBodyVelocity.MaxForce = Vector3.new(50000, 0, 50000)
     flyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
     
+    -- BodyPosition para manter no ar (controle vertical)
+    flyBodyPosition = Instance.new("BodyPosition")
+    flyBodyPosition.Parent = root
+    flyBodyPosition.MaxForce = Vector3.new(0, 50000, 0)
+    flyBodyPosition.Position = root.Position
+    flyBodyPosition.D = 100
+    flyBodyPosition.P = 10000
+    
+    -- BodyGyro para estabilizar
     flyBodyGyro = Instance.new("BodyGyro")
     flyBodyGyro.Parent = root
-    flyBodyGyro.MaxTorque = Vector3.new(0, 0, 0)
+    flyBodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+    flyBodyGyro.D = 500
+    flyBodyGyro.P = 10000
     flyBodyGyro.CFrame = root.CFrame
+    
+    local alturaAtual = root.Position.Y
     
     flyConnection = RunService.Heartbeat:Connect(function()
         if not Config.Fly then desativarFly(); return end
@@ -1290,43 +1337,75 @@ function ativarFly()
             return
         end
         
+        -- Recria objetos se foram destruídos
         if not flyBodyVelocity or not flyBodyVelocity.Parent then
             flyBodyVelocity = Instance.new("BodyVelocity")
             flyBodyVelocity.Parent = rootAtual
+            flyBodyVelocity.MaxForce = Vector3.new(50000, 0, 50000)
+        end
+        
+        if not flyBodyPosition or not flyBodyPosition.Parent then
+            flyBodyPosition = Instance.new("BodyPosition")
+            flyBodyPosition.Parent = rootAtual
+            flyBodyPosition.MaxForce = Vector3.new(0, 50000, 0)
+            flyBodyPosition.D = 100
+            flyBodyPosition.P = 10000
+            flyBodyPosition.Position = rootAtual.Position
         end
         
         if not flyBodyGyro or not flyBodyGyro.Parent then
             flyBodyGyro = Instance.new("BodyGyro")
             flyBodyGyro.Parent = rootAtual
+            flyBodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
+            flyBodyGyro.D = 500
+            flyBodyGyro.P = 10000
         end
         
-        flyBodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
-        flyBodyGyro.MaxTorque = Vector3.new(4000, 4000, 4000)
         flyBodyGyro.CFrame = Camera.CFrame
         
-        local velocidade = Vector3.new(0, 0, 0)
-        local velocidadeVoo = 50
+        local velocidadeVoo = 60
         
+        -- Controle vertical (subir/descer)
+        local alturaAlvo = rootAtual.Position.Y
+        
+        if UserInput:IsKeyDown(Enum.KeyCode.Space) then
+            alturaAlvo = alturaAlvo + 2
+        elseif UserInput:IsKeyDown(Enum.KeyCode.LeftShift) or UserInput:IsKeyDown(Enum.KeyCode.RightShift) then
+            alturaAlvo = alturaAlvo - 2
+        end
+        
+        flyBodyPosition.Position = Vector3.new(rootAtual.Position.X, alturaAlvo, rootAtual.Position.Z)
+        
+        -- Controle horizontal (WASD + Joystick)
+        local velocidadeHorizontal = Vector3.new(0, 0, 0)
+        
+        -- Teclado
         if UserInput:IsKeyDown(Enum.KeyCode.W) then
-            velocidade = velocidade + Camera.CFrame.LookVector * velocidadeVoo
+            velocidadeHorizontal = velocidadeHorizontal + Camera.CFrame.LookVector * velocidadeVoo
         end
         if UserInput:IsKeyDown(Enum.KeyCode.S) then
-            velocidade = velocidade - Camera.CFrame.LookVector * velocidadeVoo
+            velocidadeHorizontal = velocidadeHorizontal - Camera.CFrame.LookVector * velocidadeVoo
         end
         if UserInput:IsKeyDown(Enum.KeyCode.A) then
-            velocidade = velocidade - Camera.CFrame.RightVector * velocidadeVoo
+            velocidadeHorizontal = velocidadeHorizontal - Camera.CFrame.RightVector * velocidadeVoo
         end
         if UserInput:IsKeyDown(Enum.KeyCode.D) then
-            velocidade = velocidade + Camera.CFrame.RightVector * velocidadeVoo
-        end
-        if UserInput:IsKeyDown(Enum.KeyCode.Space) then
-            velocidade = velocidade + Vector3.new(0, velocidadeVoo, 0)
-        end
-        if UserInput:IsKeyDown(Enum.KeyCode.LeftShift) or UserInput:IsKeyDown(Enum.KeyCode.RightShift) then
-            velocidade = velocidade - Vector3.new(0, velocidadeVoo, 0)
+            velocidadeHorizontal = velocidadeHorizontal + Camera.CFrame.RightVector * velocidadeVoo
         end
         
-        flyBodyVelocity.Velocity = velocidade
+        -- Joystick do celular (MoveDirection)
+        local moveDirection = humAtual.MoveDirection
+        if moveDirection.Magnitude > 0 then
+            local cameraCFrame = Camera.CFrame
+            local direcaoMundo = cameraCFrame:VectorToWorldSpace(Vector3.new(moveDirection.X, 0, moveDirection.Z))
+            velocidadeHorizontal = velocidadeHorizontal + direcaoMundo * velocidadeVoo
+        end
+        
+        -- Aplica velocidade horizontal
+        flyBodyVelocity.Velocity = Vector3.new(velocidadeHorizontal.X, 0, velocidadeHorizontal.Z)
+        
+        -- Remove gravidade do humanoide
+        humAtual:ChangeState(Enum.HumanoidStateType.Flying)
     end)
 end
 
@@ -1334,6 +1413,18 @@ function desativarFly()
     if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
     if flyBodyVelocity then pcall(function() flyBodyVelocity:Destroy() end); flyBodyVelocity = nil end
     if flyBodyGyro then pcall(function() flyBodyGyro:Destroy() end); flyBodyGyro = nil end
+    if flyBodyPosition then pcall(function() flyBodyPosition:Destroy() end); flyBodyPosition = nil end
+    
+    -- Restaura estado normal do humanoide
+    pcall(function()
+        local char = LocalPlayer.Character
+        if char then
+            local hum = char:FindFirstChild("Humanoid")
+            if hum and hum.Health > 0 then
+                hum:ChangeState(Enum.HumanoidStateType.Running)
+            end
+        end
+    end)
 end
 
 -- ═══════════════════════════════════════════════════════
